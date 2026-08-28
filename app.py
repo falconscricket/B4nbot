@@ -4,7 +4,6 @@ import json
 import base64
 import requests
 import urllib3
-import urllib.parse
 from datetime import datetime
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
@@ -193,11 +192,21 @@ async def eat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("⏳ Converting EAT Token to Access Token...")
 
     api_url = f"https://eat-to-access-beta.vercel.app/eat_to_access?eat_token={eat_token}"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
+    }
+
     try:
-        response = requests.get(api_url, timeout=15)
+        response = requests.get(api_url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            await msg.edit_text(f"❌ API Error: Status code {response.status_code}")
+            return
+
         data = response.json()
-        if data.get("status") == "success" and "access_token" in data:
-            acc_token = data.get("access_token")
+        acc_token = data.get("access_token") or data.get("token") or data.get("data", {}).get("access_token")
+        
+        if data.get("status") == "success" or acc_token:
             region = data.get("region", "N/A")
             game_uid = data.get("game_uid", "N/A")
             nickname = data.get("nickname", "N/A")
@@ -212,7 +221,8 @@ async def eat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             await msg.edit_text(res_msg, parse_mode="Markdown")
         else:
-            await msg.edit_text(f"❌ *Failed to get Access Token:* {data.get('message', 'Invalid Token or API Error')}")
+            err_msg = data.get('message', 'Invalid Token or API Error')
+            await msg.edit_text(f"❌ *Failed to get Access Token:* {err_msg}", parse_mode="Markdown")
     except Exception as e:
         await msg.edit_text(f"❌ *System Error:* {str(e)}")
 
