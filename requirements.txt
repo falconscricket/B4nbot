@@ -4,3 +4,5 @@ flask
 Werkzeug
 gunicorn
 pycryptodome
+python-telegram-bot
+urllib3
