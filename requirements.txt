@@ -1,8 +1,5 @@
+protobuf>=4.0.0
 requests
-cfonts
-pycryptodome
-Pillow
-colorama
-readline
-pyreadline3
-python-3.12.7
+flask
+Werkzeug
+gunicorn
