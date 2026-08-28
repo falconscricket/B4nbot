@@ -11,6 +11,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 
 urllib3.disable_warnings()
 
+# Protobuf and Crypto imports
 try:
     from Crypto.Cipher import AES
     from Crypto.Util.Padding import pad, unpad
@@ -174,16 +175,50 @@ def trigger_injection(jwt_token, version, base_url):
     body = base64.b64decode(BODY_BASE64)
     return requests.post(api_url, headers=headers, data=body, timeout=20, verify=False)
 
+# Telegram Command Handlers
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👑 *FF PERMANENT BAN BOT* 👑\n\n"
-        "Use `/ban <Your_Token>` to execute the injection command.",
+        "👑 *FF BOT SERVICES* 👑\n\n"
+        "1️⃣ *Convert EAT to Access Token:* `/eat <eat_token>`\n"
+        "2️⃣ *Execute Ban Script:* `/ban <access_token>`",
         parse_mode="Markdown"
     )
 
+async def eat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("⚠️ Please provide your EAT Token!\nUsage: `/eat <eat_token>`", parse_mode="Markdown")
+        return
+
+    eat_token = context.args[0].strip()
+    msg = await update.message.reply_text("⏳ Converting EAT Token to Access Token...")
+
+    api_url = f"https://eat-to-access-beta.vercel.app/eat_to_access?eat_token={eat_token}"
+    try:
+        response = requests.get(api_url, timeout=15)
+        data = response.json()
+        if data.get("status") == "success" and "access_token" in data:
+            acc_token = data.get("access_token")
+            region = data.get("region", "N/A")
+            game_uid = data.get("game_uid", "N/A")
+            nickname = data.get("nickname", "N/A")
+
+            res_msg = (
+                "✅ *EAT TO ACCESS SUCCESSFUL* ✅\n\n"
+                f"👤 *Nickname:* `{nickname}`\n"
+                f"🆔 *UID:* `{game_uid}`\n"
+                f"🌍 *Region:* `{region}`\n\n"
+                f"🔑 *Access Token:*\n`{acc_token}`\n\n"
+                f"💡 *To Ban:* `/ban {acc_token}`"
+            )
+            await msg.edit_text(res_msg, parse_mode="Markdown")
+        else:
+            await msg.edit_text(f"❌ *Failed to get Access Token:* {data.get('message', 'Invalid Token or API Error')}")
+    except Exception as e:
+        await msg.edit_text(f"❌ *System Error:* {str(e)}")
+
 async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("⚠️ Please provide your Access Token or JWT!\nUsage: `/ban <token>`", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ Please provide your Access Token or JWT!\nUsage: `/ban <access_token>`", parse_mode="Markdown")
         return
 
     access_token = context.args[0].strip()
@@ -228,8 +263,9 @@ def main():
         sys.exit(1)
 
     app = ApplicationBuilder().token(bot_token).build()
-    
+
     app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("eat", eat_command))
     app.add_handler(CommandHandler("ban", ban_command))
 
     print("Telegram Bot is running...")
